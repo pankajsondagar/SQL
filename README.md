@@ -434,3 +434,133 @@ GROUP BY product_id;
 - Use `GROUP BY` to calculate revenue for each product.
 - `ORDER BY` can be used to identify the highest revenue-generating products.
 - This is one of the most common SQL aggregation interview questions.
+
+---
+
+# 5. Get the Top 3 Highest Paid Employees
+
+## Scenario
+
+Suppose you have an `employees` table.
+
+| id | name | salary |
+|----|------|--------:|
+| 1 | John | 50000 |
+| 2 | Jane | 90000 |
+| 3 | Mike | 75000 |
+| 4 | David | 85000 |
+| 5 | Alice | 95000 |
+| 6 | Bob | 90000 |
+
+We want to retrieve the **top 3 highest-paid employees**.
+
+---
+
+## Method 1: Using `ORDER BY` and `LIMIT` (MySQL, PostgreSQL)
+
+```sql
+SELECT *
+FROM employees
+ORDER BY salary DESC
+LIMIT 3;
+```
+
+### Output
+
+| id | name | salary |
+|----|------|--------:|
+| 5 | Alice | 95000 |
+| 2 | Jane | 90000 |
+| 6 | Bob | 90000 |
+
+### Explanation
+
+- `ORDER BY salary DESC` sorts employees from highest to lowest salary.
+- `LIMIT 3` returns the first three records.
+
+---
+
+## Method 2: Using `TOP` (SQL Server)
+
+```sql
+SELECT TOP 3 *
+FROM employees
+ORDER BY salary DESC;
+```
+
+### Explanation
+
+- `TOP 3` retrieves the first three rows after sorting.
+
+---
+
+## Method 3: Using `FETCH FIRST` (Oracle 12c+, PostgreSQL)
+
+```sql
+SELECT *
+FROM employees
+ORDER BY salary DESC
+FETCH FIRST 3 ROWS ONLY;
+```
+
+---
+
+## Method 4: Top 3 Distinct Highest Salaries
+
+If you need the **top 3 unique salary values**:
+
+```sql
+SELECT DISTINCT salary
+FROM employees
+ORDER BY salary DESC
+LIMIT 3;
+```
+
+### Output
+
+| salary |
+|--------:|
+| 95000 |
+| 90000 |
+| 85000 |
+
+---
+
+## Method 5: Using `DENSE_RANK()` (Recommended)
+
+To retrieve **all employees whose salary falls within the top 3 distinct salary ranks**:
+
+```sql
+SELECT id, name, salary
+FROM (
+    SELECT *,
+           DENSE_RANK() OVER (ORDER BY salary DESC) AS salary_rank
+    FROM employees
+) AS ranked_employees
+WHERE salary_rank <= 3;
+```
+
+### Output
+
+| id | name | salary |
+|----|------|--------:|
+| 5 | Alice | 95000 |
+| 2 | Jane | 90000 |
+| 6 | Bob | 90000 |
+| 4 | David | 85000 |
+
+### Explanation
+
+- `DENSE_RANK()` assigns the same rank to employees with the same salary.
+- `salary_rank <= 3` returns employees whose salaries are among the top three **distinct** salary values.
+- This is the preferred solution for SQL interviews because it correctly handles salary ties.
+
+---
+
+## Notes
+
+- Use `LIMIT` in **MySQL** and **PostgreSQL**.
+- Use `TOP` in **SQL Server**.
+- Use `FETCH FIRST` in **Oracle 12c+**.
+- Use `DENSE_RANK()` when duplicate salaries should share the same rank.
+- `LIMIT 3` returns exactly three rows, while `DENSE_RANK()` may return more than three employees if there are salary ties.
