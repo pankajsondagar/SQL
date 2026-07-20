@@ -830,3 +830,106 @@ GROUP BY customer_id;
 - Use `LEFT JOIN` if customers with no orders should also be included.
 - `GROUP BY` is required when using aggregate functions like `COUNT()`.
 - This is one of the most frequently asked SQL aggregation interview questions.
+
+---
+
+# 8. Retrieve All Employees Who Joined in 2023
+
+## Scenario
+
+Suppose you have an `employees` table.
+
+| employee_id | employee_name | department | joining_date |
+|-------------|---------------|------------|--------------|
+| 1 | John | IT | 2022-08-15 |
+| 2 | Jane | HR | 2023-01-10 |
+| 3 | Mike | Sales | 2023-06-20 |
+| 4 | Alice | Finance | 2024-02-01 |
+| 5 | David | IT | 2023-11-05 |
+
+We want to retrieve **all employees who joined in the year 2023**.
+
+---
+
+## Method 1: Using `YEAR()` (MySQL)
+
+```sql
+SELECT *
+FROM employees
+WHERE YEAR(joining_date) = 2023;
+```
+
+### Output
+
+| employee_id | employee_name | department | joining_date |
+|-------------|---------------|------------|--------------|
+| 2 | Jane | HR | 2023-01-10 |
+| 3 | Mike | Sales | 2023-06-20 |
+| 5 | David | IT | 2023-11-05 |
+
+### Explanation
+
+- `YEAR(joining_date)` extracts the year from the date.
+- The query returns employees whose joining year is **2023**.
+
+---
+
+## Method 2: Using a Date Range (Recommended)
+
+```sql
+SELECT *
+FROM employees
+WHERE joining_date >= '2023-01-01'
+  AND joining_date < '2024-01-01';
+```
+
+### Explanation
+
+- Retrieves employees who joined between **January 1, 2023** and **December 31, 2023**.
+- This approach is generally more efficient because it can utilize an index on the `joining_date` column.
+
+---
+
+## Method 3: Using `BETWEEN`
+
+```sql
+SELECT *
+FROM employees
+WHERE joining_date BETWEEN '2023-01-01' AND '2023-12-31';
+```
+
+### Explanation
+
+- `BETWEEN` includes both the start and end dates.
+- This method is suitable when `joining_date` is a `DATE` column.
+
+> **Note:** If `joining_date` is a `DATETIME` column, prefer the **date range** approach (`>= '2023-01-01' AND < '2024-01-01'`) to avoid missing records with time values on `2023-12-31`.
+
+---
+
+## Method 4: PostgreSQL
+
+```sql
+SELECT *
+FROM employees
+WHERE EXTRACT(YEAR FROM joining_date) = 2023;
+```
+
+---
+
+## Method 5: SQL Server
+
+```sql
+SELECT *
+FROM employees
+WHERE YEAR(joining_date) = 2023;
+```
+
+---
+
+## Notes
+
+- `YEAR()` is supported in **MySQL** and **SQL Server**.
+- `EXTRACT(YEAR FROM date)` is commonly used in **PostgreSQL** and **Oracle**.
+- Using a **date range** (`>=` and `<`) is the recommended approach for better performance on indexed date columns.
+- This is a common SQL interview question for testing date filtering.
