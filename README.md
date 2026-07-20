@@ -2125,3 +2125,878 @@ ORDER BY salary DESC;
 - Use comparison operators (`>=` and `<=`) if you prefer explicit conditions.
 - `ORDER BY salary DESC` displays employees from the highest to the lowest salary.
 - This is a common SQL interview question for testing filtering with numeric ranges.
+
+---
+
+# 18. Get Monthly Sales Revenue and Order Count
+
+## Scenario
+
+Suppose you have an `orders` table.
+
+| order_id | order_date | order_amount |
+|---------:|------------|-------------:|
+| 101 | 2025-01-10 | 1200 |
+| 102 | 2025-01-15 | 800 |
+| 103 | 2025-02-05 | 1500 |
+| 104 | 2025-02-20 | 1000 |
+| 105 | 2025-03-08 | 1800 |
+| 106 | 2025-03-25 | 900 |
+
+We want to calculate the **monthly sales revenue** and **number of orders**.
+
+---
+
+## Method 1: Using `YEAR()` and `MONTH()` (MySQL)
+
+```sql
+SELECT
+    YEAR(order_date) AS year,
+    MONTH(order_date) AS month,
+    SUM(order_amount) AS total_revenue,
+    COUNT(order_id) AS total_orders
+FROM orders
+GROUP BY
+    YEAR(order_date),
+    MONTH(order_date)
+ORDER BY
+    YEAR(order_date),
+    MONTH(order_date);
+```
+
+### Output
+
+| year | month | total_revenue | total_orders |
+|-----:|------:|--------------:|-------------:|
+| 2025 | 1 | 2000 | 2 |
+| 2025 | 2 | 2500 | 2 |
+| 2025 | 3 | 2700 | 2 |
+
+### Explanation
+
+- `YEAR(order_date)` extracts the year.
+- `MONTH(order_date)` extracts the month.
+- `SUM(order_amount)` calculates monthly revenue.
+- `COUNT(order_id)` counts monthly orders.
+
+---
+
+## Method 2: Display Month Name (MySQL)
+
+```sql
+SELECT
+    DATE_FORMAT(order_date, '%Y-%m') AS month,
+    SUM(order_amount) AS total_revenue,
+    COUNT(order_id) AS total_orders
+FROM orders
+GROUP BY DATE_FORMAT(order_date, '%Y-%m')
+ORDER BY month;
+```
+
+### Output
+
+| month | total_revenue | total_orders |
+|--------|--------------:|-------------:|
+| 2025-01 | 2000 | 2 |
+| 2025-02 | 2500 | 2 |
+| 2025-03 | 2700 | 2 |
+
+### Explanation
+
+- `DATE_FORMAT('%Y-%m')` groups data by year and month.
+- Produces a readable monthly report.
+
+---
+
+## Method 3: PostgreSQL
+
+```sql
+SELECT
+    DATE_TRUNC('month', order_date) AS month,
+    SUM(order_amount) AS total_revenue,
+    COUNT(order_id) AS total_orders
+FROM orders
+GROUP BY DATE_TRUNC('month', order_date)
+ORDER BY month;
+```
+
+---
+
+## Method 4: SQL Server
+
+```sql
+SELECT
+    YEAR(order_date) AS year,
+    MONTH(order_date) AS month,
+    SUM(order_amount) AS total_revenue,
+    COUNT(order_id) AS total_orders
+FROM orders
+GROUP BY
+    YEAR(order_date),
+    MONTH(order_date)
+ORDER BY
+    year,
+    month;
+```
+
+---
+
+## Method 5: Monthly Revenue, Orders, and Average Order Value
+
+```sql
+SELECT
+    DATE_FORMAT(order_date, '%Y-%m') AS month,
+    SUM(order_amount) AS total_revenue,
+    COUNT(order_id) AS total_orders,
+    AVG(order_amount) AS average_order_value
+FROM orders
+GROUP BY DATE_FORMAT(order_date, '%Y-%m')
+ORDER BY month;
+```
+
+### Output
+
+| month | total_revenue | total_orders | average_order_value |
+|--------|--------------:|-------------:|--------------------:|
+| 2025-01 | 2000 | 2 | 1000 |
+| 2025-02 | 2500 | 2 | 1250 |
+| 2025-03 | 2700 | 2 | 1350 |
+
+---
+
+## Notes
+
+- `SUM()` calculates the total monthly revenue.
+- `COUNT()` calculates the number of orders.
+- `AVG()` calculates the average order value.
+- Use `DATE_FORMAT()` in MySQL for readable month-wise reports.
+- This is a common SQL interview question involving date functions, aggregation, and reporting.
+
+---
+
+# 19. Rank Employees by Salary Within Each Department
+
+## Scenario
+
+Suppose you have an `employees` table.
+
+| employee_id | employee_name | department | salary |
+|------------:|---------------|------------|-------:|
+| 1 | John | IT | 90000 |
+| 2 | Jane | IT | 75000 |
+| 3 | Mike | HR | 80000 |
+| 4 | Alice | HR | 95000 |
+| 5 | David | IT | 90000 |
+| 6 | Bob | HR | 70000 |
+
+We want to **rank employees by salary within each department**, where the highest salary receives Rank 1.
+
+---
+
+## Method 1: Using `RANK()` (Most Common)
+
+```sql
+SELECT
+    employee_id,
+    employee_name,
+    department,
+    salary,
+    RANK() OVER (
+        PARTITION BY department
+        ORDER BY salary DESC
+    ) AS salary_rank
+FROM employees;
+```
+
+### Output
+
+| employee_id | employee_name | department | salary | salary_rank |
+|------------:|---------------|------------|-------:|------------:|
+| 1 | John | IT | 90000 | 1 |
+| 5 | David | IT | 90000 | 1 |
+| 2 | Jane | IT | 75000 | 3 |
+| 4 | Alice | HR | 95000 | 1 |
+| 3 | Mike | HR | 80000 | 2 |
+| 6 | Bob | HR | 70000 | 3 |
+
+### Explanation
+
+- `PARTITION BY department` creates a separate ranking for each department.
+- `ORDER BY salary DESC` ranks employees from highest to lowest salary.
+- Employees with the same salary receive the same rank.
+- `RANK()` skips the next rank after a tie.
+
+---
+
+## Method 2: Using `DENSE_RANK()`
+
+```sql
+SELECT
+    employee_id,
+    employee_name,
+    department,
+    salary,
+    DENSE_RANK() OVER (
+        PARTITION BY department
+        ORDER BY salary DESC
+    ) AS salary_rank
+FROM employees;
+```
+
+### Output
+
+| employee_id | employee_name | department | salary | salary_rank |
+|------------:|---------------|------------|-------:|------------:|
+| 1 | John | IT | 90000 | 1 |
+| 5 | David | IT | 90000 | 1 |
+| 2 | Jane | IT | 75000 | 2 |
+| 4 | Alice | HR | 95000 | 1 |
+| 3 | Mike | HR | 80000 | 2 |
+| 6 | Bob | HR | 70000 | 3 |
+
+### Explanation
+
+- Similar to `RANK()`.
+- The difference is that **no rank numbers are skipped** after ties.
+
+---
+
+## Method 3: Using `ROW_NUMBER()`
+
+```sql
+SELECT
+    employee_id,
+    employee_name,
+    department,
+    salary,
+    ROW_NUMBER() OVER (
+        PARTITION BY department
+        ORDER BY salary DESC
+    ) AS row_number
+FROM employees;
+```
+
+### Output
+
+| employee_id | employee_name | department | salary | row_number |
+|------------:|---------------|------------|-------:|-----------:|
+| 1 | John | IT | 90000 | 1 |
+| 5 | David | IT | 90000 | 2 |
+| 2 | Jane | IT | 75000 | 3 |
+| 4 | Alice | HR | 95000 | 1 |
+| 3 | Mike | HR | 80000 | 2 |
+| 6 | Bob | HR | 70000 | 3 |
+
+### Explanation
+
+- `ROW_NUMBER()` assigns a unique sequential number.
+- Even if two employees have the same salary, they receive different row numbers.
+
+---
+
+## Method 4: Retrieve the Highest-Paid Employee from Each Department
+
+```sql
+SELECT *
+FROM (
+    SELECT *,
+           DENSE_RANK() OVER (
+               PARTITION BY department
+               ORDER BY salary DESC
+           ) AS salary_rank
+    FROM employees
+) AS ranked_employees
+WHERE salary_rank = 1;
+```
+
+### Output
+
+| employee_id | employee_name | department | salary |
+|------------:|---------------|------------|-------:|
+| 1 | John | IT | 90000 |
+| 5 | David | IT | 90000 |
+| 4 | Alice | HR | 95000 |
+
+---
+
+## Notes
+
+- `PARTITION BY` creates separate rankings for each department.
+- `RANK()` skips rank numbers after ties.
+- `DENSE_RANK()` does **not** skip rank numbers and is commonly preferred in interviews.
+- `ROW_NUMBER()` always assigns unique sequential numbers, even when salaries are equal.
+- This is one of the most frequently asked SQL interview questions on window functions.
+
+---
+
+# 20. Find Customers Who Placed Orders Every Month in 2023
+
+## Scenario
+
+Suppose you have the following tables.
+
+### customers
+
+| customer_id | customer_name |
+|------------:|---------------|
+| 1 | John |
+| 2 | Jane |
+| 3 | Mike |
+
+### orders
+
+| order_id | customer_id | order_date | order_amount |
+|---------:|------------:|------------|-------------:|
+| 101 | 1 | 2023-01-10 | 500 |
+| 102 | 1 | 2023-02-12 | 800 |
+| ... | ... | ... | ... |
+| 112 | 1 | 2023-12-20 | 900 |
+| 113 | 2 | 2023-01-15 | 700 |
+| 114 | 2 | 2023-03-18 | 600 |
+| 115 | 3 | 2023-01-22 | 1200 |
+
+We want to find customers who have placed **at least one order in every month of 2023**.
+
+---
+
+## Method 1: Using `COUNT(DISTINCT MONTH())` (MySQL)
+
+```sql
+SELECT
+    customer_id
+FROM orders
+WHERE YEAR(order_date) = 2023
+GROUP BY customer_id
+HAVING COUNT(DISTINCT MONTH(order_date)) = 12;
+```
+
+### Output
+
+| customer_id |
+|------------:|
+| 1 |
+
+### Explanation
+
+- `YEAR(order_date) = 2023` filters orders placed in 2023.
+- `MONTH(order_date)` extracts the month.
+- `COUNT(DISTINCT MONTH(order_date)) = 12` ensures the customer has orders in all 12 months.
+
+---
+
+## Method 2: Display Customer Names
+
+```sql
+SELECT
+    c.customer_id,
+    c.customer_name
+FROM customers c
+JOIN orders o
+    ON c.customer_id = o.customer_id
+WHERE YEAR(o.order_date) = 2023
+GROUP BY
+    c.customer_id,
+    c.customer_name
+HAVING COUNT(DISTINCT MONTH(o.order_date)) = 12;
+```
+
+### Output
+
+| customer_id | customer_name |
+|------------:|---------------|
+| 1 | John |
+
+---
+
+## Method 3: PostgreSQL
+
+```sql
+SELECT
+    customer_id
+FROM orders
+WHERE EXTRACT(YEAR FROM order_date) = 2023
+GROUP BY customer_id
+HAVING COUNT(DISTINCT EXTRACT(MONTH FROM order_date)) = 12;
+```
+
+---
+
+## Method 4: SQL Server
+
+```sql
+SELECT
+    customer_id
+FROM orders
+WHERE YEAR(order_date) = 2023
+GROUP BY customer_id
+HAVING COUNT(DISTINCT MONTH(order_date)) = 12;
+```
+
+---
+
+## Method 5: Retrieve Total Orders for Qualified Customers
+
+```sql
+SELECT
+    customer_id,
+    COUNT(order_id) AS total_orders
+FROM orders
+WHERE YEAR(order_date) = 2023
+GROUP BY customer_id
+HAVING COUNT(DISTINCT MONTH(order_date)) = 12;
+```
+
+### Output
+
+| customer_id | total_orders |
+|------------:|-------------:|
+| 1 | 18 |
+
+### Explanation
+
+- A customer may place multiple orders in the same month.
+- `COUNT(DISTINCT MONTH(order_date))` checks month coverage.
+- `COUNT(order_id)` returns the total number of orders placed during the year.
+
+---
+
+## Notes
+
+- `COUNT(DISTINCT MONTH(order_date)) = 12` ensures at least one order in every month.
+- `DISTINCT` is essential because a customer can place multiple orders in the same month.
+- Use `EXTRACT()` instead of `YEAR()` and `MONTH()` in PostgreSQL.
+- This is a common SQL interview question involving grouping, date functions, and aggregate filtering.
+
+---
+
+# 21. Find Moving Average of Sales Over the Last 3 Days
+
+## Scenario
+
+Suppose you have a `sales` table.
+
+| sale_date | sales_amount |
+|------------|-------------:|
+| 2025-01-01 | 1000 |
+| 2025-01-02 | 1200 |
+| 2025-01-03 | 900 |
+| 2025-01-04 | 1500 |
+| 2025-01-05 | 1800 |
+| 2025-01-06 | 1700 |
+
+We want to calculate the **3-day moving average** of sales.
+
+> **Moving Average = Average of the current day and the previous 2 days**
+
+---
+
+## Method 1: Using Window Functions (Recommended)
+
+```sql
+SELECT
+    sale_date,
+    sales_amount,
+    AVG(sales_amount) OVER (
+        ORDER BY sale_date
+        ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+    ) AS moving_average
+FROM sales;
+```
+
+### Output
+
+| sale_date | sales_amount | moving_average |
+|------------|-------------:|---------------:|
+| 2025-01-01 | 1000 | 1000.00 |
+| 2025-01-02 | 1200 | 1100.00 |
+| 2025-01-03 | 900 | 1033.33 |
+| 2025-01-04 | 1500 | 1200.00 |
+| 2025-01-05 | 1800 | 1400.00 |
+| 2025-01-06 | 1700 | 1666.67 |
+
+### Explanation
+
+- `AVG()` is used as a window function.
+- `ORDER BY sale_date` processes records in chronological order.
+- `ROWS BETWEEN 2 PRECEDING AND CURRENT ROW` includes:
+  - Current day
+  - Previous day
+  - Two days before
+- For the first two rows, SQL calculates the average using the available rows.
+
+---
+
+## Method 2: Using a Common Table Expression (CTE)
+
+```sql
+WITH sales_data AS (
+    SELECT
+        sale_date,
+        sales_amount,
+        AVG(sales_amount) OVER (
+            ORDER BY sale_date
+            ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+        ) AS moving_average
+    FROM sales
+)
+SELECT *
+FROM sales_data;
+```
+
+### Explanation
+
+- A CTE improves readability for larger queries.
+- Useful when the moving average is used in additional calculations.
+
+---
+
+## Method 3: Using a Correlated Subquery (For Databases Without Window Functions)
+
+```sql
+SELECT
+    s1.sale_date,
+    s1.sales_amount,
+    (
+        SELECT AVG(s2.sales_amount)
+        FROM sales s2
+        WHERE s2.sale_date BETWEEN
+              DATE_SUB(s1.sale_date, INTERVAL 2 DAY)
+              AND s1.sale_date
+    ) AS moving_average
+FROM sales s1
+ORDER BY s1.sale_date;
+```
+
+> **Note:** The above query uses MySQL's `DATE_SUB()` function.
+
+### Explanation
+
+- For each sale date, the subquery calculates the average sales over the previous two days and the current day.
+- This approach is less efficient than window functions for large datasets.
+
+---
+
+## Method 4: Moving Average Per Product
+
+If the table contains multiple products:
+
+```sql
+SELECT
+    product_id,
+    sale_date,
+    sales_amount,
+    AVG(sales_amount) OVER (
+        PARTITION BY product_id
+        ORDER BY sale_date
+        ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+    ) AS moving_average
+FROM sales;
+```
+
+### Explanation
+
+- `PARTITION BY product_id` calculates a separate moving average for each product.
+- Each product's sales history is processed independently.
+
+---
+
+## Notes
+
+- `AVG() OVER()` is the preferred solution for calculating moving averages.
+- `ROWS BETWEEN 2 PRECEDING AND CURRENT ROW` creates a rolling 3-row window.
+- Window functions are supported in **MySQL 8+**, **PostgreSQL**, **SQL Server**, and **Oracle**.
+- This is a common SQL interview question involving window functions and analytical queries.
+
+---
+
+# 22. Identify the First and Last Order Date for Each Customer
+
+## Scenario
+
+Suppose you have the following `orders` table.
+
+| order_id | customer_id | order_date |
+|---------:|------------:|------------|
+| 101 | 1 | 2025-01-10 |
+| 102 | 2 | 2025-01-12 |
+| 103 | 1 | 2025-02-05 |
+| 104 | 3 | 2025-01-20 |
+| 105 | 2 | 2025-03-15 |
+| 106 | 1 | 2025-04-01 |
+
+We want to identify the **first** and **last** order date for each customer.
+
+---
+
+## Method 1: Using `MIN()` and `MAX()` (Most Common)
+
+```sql
+SELECT
+    customer_id,
+    MIN(order_date) AS first_order_date,
+    MAX(order_date) AS last_order_date
+FROM orders
+GROUP BY customer_id;
+```
+
+### Output
+
+| customer_id | first_order_date | last_order_date |
+|------------:|------------------|-----------------|
+| 1 | 2025-01-10 | 2025-04-01 |
+| 2 | 2025-01-12 | 2025-03-15 |
+| 3 | 2025-01-20 | 2025-01-20 |
+
+### Explanation
+
+- `MIN(order_date)` returns the earliest order date.
+- `MAX(order_date)` returns the latest order date.
+- `GROUP BY customer_id` groups orders by customer.
+
+---
+
+## Method 2: Display Customer Names
+
+```sql
+SELECT
+    c.customer_id,
+    c.customer_name,
+    MIN(o.order_date) AS first_order_date,
+    MAX(o.order_date) AS last_order_date
+FROM customers c
+JOIN orders o
+    ON c.customer_id = o.customer_id
+GROUP BY
+    c.customer_id,
+    c.customer_name;
+```
+
+### Output
+
+| customer_id | customer_name | first_order_date | last_order_date |
+|------------:|---------------|------------------|-----------------|
+| 1 | John | 2025-01-10 | 2025-04-01 |
+| 2 | Jane | 2025-01-12 | 2025-03-15 |
+| 3 | Mike | 2025-01-20 | 2025-01-20 |
+
+---
+
+## Method 3: Include Total Orders
+
+```sql
+SELECT
+    customer_id,
+    MIN(order_date) AS first_order_date,
+    MAX(order_date) AS last_order_date,
+    COUNT(order_id) AS total_orders
+FROM orders
+GROUP BY customer_id;
+```
+
+### Output
+
+| customer_id | first_order_date | last_order_date | total_orders |
+|------------:|------------------|-----------------|-------------:|
+| 1 | 2025-01-10 | 2025-04-01 | 3 |
+| 2 | 2025-01-12 | 2025-03-15 | 2 |
+| 3 | 2025-01-20 | 2025-01-20 | 1 |
+
+---
+
+## Method 4: Retrieve First and Last Order Details
+
+If you need the complete order details instead of just the dates:
+
+```sql
+SELECT *
+FROM orders o
+WHERE (customer_id, order_date) IN (
+    SELECT
+        customer_id,
+        MIN(order_date)
+    FROM orders
+    GROUP BY customer_id
+)
+OR (customer_id, order_date) IN (
+    SELECT
+        customer_id,
+        MAX(order_date)
+    FROM orders
+    GROUP BY customer_id
+)
+ORDER BY customer_id, order_date;
+```
+
+### Explanation
+
+- The first subquery retrieves the earliest order date for each customer.
+- The second subquery retrieves the latest order date for each customer.
+- The outer query returns the corresponding order records.
+
+> **Note:** Tuple comparisons like `(customer_id, order_date)` are supported in **MySQL** and **PostgreSQL**. For SQL Server, use `JOIN` or window functions instead.
+
+---
+
+## Notes
+
+- `MIN()` returns the earliest order date.
+- `MAX()` returns the latest order date.
+- `GROUP BY` is required to calculate results for each customer.
+- Use `JOIN` with the `customers` table to display customer names.
+- This is a common SQL interview question on aggregate functions and grouping.
+
+---
+
+# 23. Show Product Sales Distribution (Percent of Total Revenue)
+
+## Scenario
+
+Suppose you have an `order_items` table.
+
+| order_id | product_id | product_name | quantity | price |
+|---------:|-----------:|--------------|---------:|------:|
+| 101 | 1 | Laptop | 2 | 50000 |
+| 102 | 2 | Mouse | 5 | 500 |
+| 103 | 1 | Laptop | 1 | 50000 |
+| 104 | 3 | Keyboard | 3 | 1500 |
+| 105 | 2 | Mouse | 2 | 500 |
+
+We want to calculate **each product's contribution to the total revenue** as a percentage.
+
+> **Revenue = Quantity × Price**
+
+---
+
+## Method 1: Using a Window Function (Recommended)
+
+```sql
+SELECT
+    product_id,
+    product_name,
+    SUM(quantity * price) AS product_revenue,
+    ROUND(
+        SUM(quantity * price) * 100.0 /
+        SUM(SUM(quantity * price)) OVER (),
+        2
+    ) AS revenue_percentage
+FROM order_items
+GROUP BY
+    product_id,
+    product_name;
+```
+
+### Output
+
+| product_id | product_name | product_revenue | revenue_percentage |
+|-----------:|--------------|----------------:|-------------------:|
+| 1 | Laptop | 150000 | 95.85 |
+| 2 | Mouse | 3500 | 2.24 |
+| 3 | Keyboard | 4500 | 2.88 |
+
+### Explanation
+
+- `SUM(quantity * price)` calculates revenue for each product.
+- `SUM(...) OVER ()` calculates the total revenue of all products.
+- Revenue percentage is calculated as:
+
+```text
+(Product Revenue / Total Revenue) × 100
+```
+
+- `ROUND(..., 2)` rounds the result to two decimal places.
+
+---
+
+## Method 2: Using a Subquery
+
+```sql
+SELECT
+    product_id,
+    product_name,
+    product_revenue,
+    ROUND(
+        product_revenue * 100.0 / total_revenue,
+        2
+    ) AS revenue_percentage
+FROM (
+    SELECT
+        product_id,
+        product_name,
+        SUM(quantity * price) AS product_revenue,
+        (
+            SELECT SUM(quantity * price)
+            FROM order_items
+        ) AS total_revenue
+    FROM order_items
+    GROUP BY
+        product_id,
+        product_name
+) AS revenue_summary;
+```
+
+### Explanation
+
+- The inner query calculates revenue for each product.
+- The subquery calculates the total revenue.
+- The outer query computes the percentage contribution.
+
+---
+
+## Method 3: Sort by Highest Revenue Contribution
+
+```sql
+SELECT
+    product_name,
+    SUM(quantity * price) AS product_revenue,
+    ROUND(
+        SUM(quantity * price) * 100.0 /
+        SUM(SUM(quantity * price)) OVER (),
+        2
+    ) AS revenue_percentage
+FROM order_items
+GROUP BY product_name
+ORDER BY revenue_percentage DESC;
+```
+
+### Output
+
+| product_name | product_revenue | revenue_percentage |
+|--------------|----------------:|-------------------:|
+| Laptop | 150000 | 95.85 |
+| Keyboard | 4500 | 2.88 |
+| Mouse | 3500 | 2.24 |
+
+---
+
+## Method 4: Include Total Quantity Sold
+
+```sql
+SELECT
+    product_name,
+    SUM(quantity) AS total_quantity_sold,
+    SUM(quantity * price) AS product_revenue,
+    ROUND(
+        SUM(quantity * price) * 100.0 /
+        SUM(SUM(quantity * price)) OVER (),
+        2
+    ) AS revenue_percentage
+FROM order_items
+GROUP BY product_name;
+```
+
+### Output
+
+| product_name | total_quantity_sold | product_revenue | revenue_percentage |
+|--------------|--------------------:|----------------:|-------------------:|
+| Laptop | 3 | 150000 | 95.85 |
+| Mouse | 7 | 3500 | 2.24 |
+| Keyboard | 3 | 4500 | 2.88 |
+
+---
+
+## Notes
+
+- Revenue is calculated as **Quantity × Price**.
+- `SUM() OVER()` is the preferred approach because it calculates the total revenue without requiring a separate subquery.
+- `ROUND()` formats the percentage to two decimal places.
+- This is a common SQL interview question involving aggregation, window functions, and percentage calculations.
