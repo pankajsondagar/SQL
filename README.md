@@ -1202,3 +1202,130 @@ AND o.order_date = latest.latest_order_date;
 - If multiple orders have the same latest date, `ROW_NUMBER()` returns only one row. Use `RANK()` or `DENSE_RANK()` if you want all tied latest orders.
 - The `JOIN + MAX()` approach is compatible with most SQL databases.
 - This is one of the most common SQL interview questions involving window functions and grouping.
+
+---
+
+# 11. Find Products That Were Never Sold
+
+## Scenario
+
+Suppose you have the following tables.
+
+### products
+
+| product_id | product_name |
+|-----------:|--------------|
+| 101 | Laptop |
+| 102 | Mouse |
+| 103 | Keyboard |
+| 104 | Monitor |
+| 105 | Webcam |
+
+### order_items
+
+| order_item_id | order_id | product_id | quantity |
+|--------------:|---------:|-----------:|---------:|
+| 1 | 1001 | 101 | 2 |
+| 2 | 1001 | 102 | 1 |
+| 3 | 1002 | 101 | 1 |
+| 4 | 1003 | 103 | 3 |
+
+We want to find **products that have never been sold**.
+
+---
+
+## Method 1: Using `LEFT JOIN` (Most Common)
+
+```sql
+SELECT
+    p.product_id,
+    p.product_name
+FROM products p
+LEFT JOIN order_items oi
+    ON p.product_id = oi.product_id
+WHERE oi.product_id IS NULL;
+```
+
+### Output
+
+| product_id | product_name |
+|-----------:|--------------|
+| 104 | Monitor |
+| 105 | Webcam |
+
+### Explanation
+
+- `LEFT JOIN` returns all products.
+- Products with no matching records in `order_items` have `NULL` values.
+- `WHERE oi.product_id IS NULL` filters products that were never sold.
+
+---
+
+## Method 2: Using `NOT EXISTS` (Recommended)
+
+```sql
+SELECT
+    p.product_id,
+    p.product_name
+FROM products p
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM order_items oi
+    WHERE oi.product_id = p.product_id
+);
+```
+
+### Explanation
+
+- `NOT EXISTS` checks whether a matching sales record exists.
+- If no matching record is found, the product is returned.
+- This is often the preferred solution in SQL interviews because of its performance and reliability.
+
+---
+
+## Method 3: Using `NOT IN`
+
+```sql
+SELECT
+    product_id,
+    product_name
+FROM products
+WHERE product_id NOT IN (
+    SELECT product_id
+    FROM order_items
+);
+```
+
+### Explanation
+
+- Retrieves products whose `product_id` is not present in the `order_items` table.
+- Use this method only when `product_id` in `order_items` does not contain `NULL` values.
+
+---
+
+## Method 4: Display Unsold Products with Category
+
+```sql
+SELECT
+    p.product_id,
+    p.product_name,
+    p.category
+FROM products p
+LEFT JOIN order_items oi
+    ON p.product_id = oi.product_id
+WHERE oi.product_id IS NULL;
+```
+
+### Explanation
+
+- Returns additional product details such as the category.
+- Useful for inventory and stock analysis.
+
+---
+
+## Notes
+
+- `LEFT JOIN ... IS NULL` is the most common solution.
+- `NOT EXISTS` is generally the recommended approach because it handles `NULL` values correctly and performs well.
+- Avoid using `NOT IN` if the subquery may return `NULL` values.
+- This is a frequently asked SQL interview question related to joins and subqueries.
