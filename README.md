@@ -564,3 +564,124 @@ WHERE salary_rank <= 3;
 - Use `FETCH FIRST` in **Oracle 12c+**.
 - Use `DENSE_RANK()` when duplicate salaries should share the same rank.
 - `LIMIT 3` returns exactly three rows, while `DENSE_RANK()` may return more than three employees if there are salary ties.
+
+---
+
+# 6. Customers Who Made Purchases but Never Returned Products
+
+## Scenario
+
+Suppose you have the following tables.
+
+### customers
+
+| customer_id | customer_name |
+|------------:|---------------|
+| 1 | John |
+| 2 | Jane |
+| 3 | Mike |
+| 4 | Alice |
+
+### orders
+
+| order_id | customer_id | order_date |
+|---------:|------------:|------------|
+| 101 | 1 | 2025-01-10 |
+| 102 | 2 | 2025-01-12 |
+| 103 | 3 | 2025-01-15 |
+| 104 | 1 | 2025-02-05 |
+
+### returns
+
+| return_id | order_id | customer_id | return_date |
+|----------:|----------:|------------:|------------|
+| 1 | 102 | 2 | 2025-01-20 |
+| 2 | 103 | 3 | 2025-01-25 |
+
+We want to find customers who have made **at least one purchase** but **never returned any product**.
+
+---
+
+## Method 1: Using `NOT EXISTS` (Recommended)
+
+```sql
+SELECT c.customer_id,
+       c.customer_name
+FROM customers c
+WHERE EXISTS (
+    SELECT 1
+    FROM orders o
+    WHERE o.customer_id = c.customer_id
+)
+AND NOT EXISTS (
+    SELECT 1
+    FROM returns r
+    WHERE r.customer_id = c.customer_id
+);
+```
+
+### Output
+
+| customer_id | customer_name |
+|------------:|---------------|
+| 1 | John |
+
+### Explanation
+
+- `EXISTS` ensures the customer has placed at least one order.
+- `NOT EXISTS` ensures the customer has never made a return.
+- This is the preferred approach because it is efficient and handles large datasets well.
+
+---
+
+## Method 2: Using `LEFT JOIN`
+
+```sql
+SELECT DISTINCT
+    c.customer_id,
+    c.customer_name
+FROM customers c
+INNER JOIN orders o
+    ON c.customer_id = o.customer_id
+LEFT JOIN returns r
+    ON c.customer_id = r.customer_id
+WHERE r.customer_id IS NULL;
+```
+
+### Explanation
+
+- `INNER JOIN` selects customers who have made purchases.
+- `LEFT JOIN` includes return records if they exist.
+- `WHERE r.customer_id IS NULL` filters customers who have never returned a product.
+
+---
+
+## Method 3: Using `NOT IN`
+
+```sql
+SELECT DISTINCT
+    c.customer_id,
+    c.customer_name
+FROM customers c
+JOIN orders o
+    ON c.customer_id = o.customer_id
+WHERE c.customer_id NOT IN (
+    SELECT customer_id
+    FROM returns
+);
+```
+
+### Explanation
+
+- Retrieves customers with purchases.
+- Excludes customers found in the `returns` table.
+- Use this method only when `customer_id` in the `returns` table cannot contain `NULL` values.
+
+---
+
+## Notes
+
+- `NOT EXISTS` is generally the most reliable and interview-preferred solution.
+- `LEFT JOIN ... IS NULL` is another common and readable approach.
+- Avoid `NOT IN` if the subquery may return `NULL` values, as it can produce unexpected results.
+- Ensure the customer has at least one purchase before checking for returns.
