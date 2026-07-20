@@ -227,3 +227,102 @@ WHERE salary = (
 - `DENSE_RANK()` is the preferred approach for modern SQL databases.
 - The `MAX()` method is compatible with almost all SQL databases.
 - If there is no second highest salary (all employees have the same salary), these queries return `NULL` or no rows depending on the method.
+
+---
+
+# 3. Find Employees Without Department
+
+## Scenario
+
+Suppose you have an `employees` table.
+
+| id | name | department_id |
+|----|------|---------------|
+| 1 | John | 101 |
+| 2 | Jane | NULL |
+| 3 | Mike | 102 |
+| 4 | David | NULL |
+| 5 | Alice | 103 |
+
+We want to find employees who are **not assigned to any department**.
+
+---
+
+## Method 1: Using `IS NULL` (Most Common)
+
+```sql
+SELECT *
+FROM employees
+WHERE department_id IS NULL;
+```
+
+### Output
+
+| id | name | department_id |
+|----|------|---------------|
+| 2 | Jane | NULL |
+| 4 | David | NULL |
+
+### Explanation
+
+- `NULL` represents missing or unknown data.
+- `IS NULL` is used to check for `NULL` values.
+- Do **not** use `= NULL`; it will never return any rows.
+
+---
+
+## Method 2: Employees Without a Matching Department (Using `LEFT JOIN`)
+
+Suppose you have a `departments` table.
+
+### departments
+
+| department_id | department_name |
+|---------------|-----------------|
+| 101 | IT |
+| 102 | HR |
+| 103 | Finance |
+
+To find employees whose `department_id` does not exist in the `departments` table:
+
+```sql
+SELECT e.*
+FROM employees e
+LEFT JOIN departments d
+    ON e.department_id = d.department_id
+WHERE d.department_id IS NULL;
+```
+
+### Explanation
+
+- `LEFT JOIN` returns all employees.
+- If no matching department exists, the department columns become `NULL`.
+- Filtering with `WHERE d.department_id IS NULL` returns employees without a valid department.
+
+---
+
+## Method 3: Using `NOT EXISTS`
+
+```sql
+SELECT *
+FROM employees e
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM departments d
+    WHERE d.department_id = e.department_id
+);
+```
+
+### Explanation
+
+- `NOT EXISTS` checks whether a matching department exists.
+- If no matching department is found, the employee is returned.
+- This method is efficient and commonly used in SQL interviews.
+
+---
+
+## Notes
+
+- Use `IS NULL` when the department column itself is `NULL`.
+- Use `LEFT JOIN` or `NOT EXISTS` when checking against a separate `departments` table.
+- Avoid using `= NULL`; always use `IS NULL` or `IS NOT NULL`.
