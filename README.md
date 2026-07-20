@@ -1064,3 +1064,141 @@ GROUP BY
 - `GROUP BY` is required to calculate the average for each customer.
 - `COALESCE()` is useful for handling customers who have not placed any orders.
 - Average Order Value (AOV) is a key e-commerce KPI used to measure customer purchasing behavior.
+
+---
+
+# 10. Get the Latest Order Placed by Each Customer
+
+## Scenario
+
+Suppose you have an `orders` table.
+
+| order_id | customer_id | order_date | order_amount |
+|---------:|------------:|------------|-------------:|
+| 101 | 1 | 2025-01-10 | 500 |
+| 102 | 2 | 2025-01-12 | 1200 |
+| 103 | 1 | 2025-02-05 | 700 |
+| 104 | 3 | 2025-01-20 | 1500 |
+| 105 | 2 | 2025-02-15 | 800 |
+| 106 | 1 | 2025-03-01 | 1000 |
+
+We want to retrieve the **latest order placed by each customer**.
+
+---
+
+## Method 1: Using a Correlated Subquery (Works in Most SQL Databases)
+
+```sql
+SELECT *
+FROM orders o
+WHERE order_date = (
+    SELECT MAX(order_date)
+    FROM orders
+    WHERE customer_id = o.customer_id
+);
+```
+
+### Output
+
+| order_id | customer_id | order_date | order_amount |
+|---------:|------------:|------------|-------------:|
+| 106 | 1 | 2025-03-01 | 1000 |
+| 105 | 2 | 2025-02-15 | 800 |
+| 104 | 3 | 2025-01-20 | 1500 |
+
+### Explanation
+
+- The inner query finds the latest (`MAX`) order date for each customer.
+- The outer query returns the corresponding order details.
+
+---
+
+## Method 2: Using `ROW_NUMBER()` (Recommended)
+
+```sql
+SELECT
+    order_id,
+    customer_id,
+    order_date,
+    order_amount
+FROM (
+    SELECT *,
+           ROW_NUMBER() OVER (
+               PARTITION BY customer_id
+               ORDER BY order_date DESC
+           ) AS rn
+    FROM orders
+) AS latest_orders
+WHERE rn = 1;
+```
+
+### Explanation
+
+- `PARTITION BY customer_id` creates a separate ranking for each customer.
+- `ORDER BY order_date DESC` ranks the newest order first.
+- `ROW_NUMBER() = 1` returns the latest order for each customer.
+
+---
+
+## Method 3: Using `JOIN` with `MAX()`
+
+```sql
+SELECT o.*
+FROM orders o
+JOIN (
+    SELECT
+        customer_id,
+        MAX(order_date) AS latest_order_date
+    FROM orders
+    GROUP BY customer_id
+) latest
+ON o.customer_id = latest.customer_id
+AND o.order_date = latest.latest_order_date;
+```
+
+### Explanation
+
+- The subquery finds the latest order date for each customer.
+- The `JOIN` retrieves the complete order details.
+
+---
+
+## Method 4: Display Customer Name Along with Latest Order
+
+```sql
+SELECT
+    c.customer_id,
+    c.customer_name,
+    o.order_id,
+    o.order_date,
+    o.order_amount
+FROM customers c
+JOIN orders o
+    ON c.customer_id = o.customer_id
+JOIN (
+    SELECT
+        customer_id,
+        MAX(order_date) AS latest_order_date
+    FROM orders
+    GROUP BY customer_id
+) latest
+ON o.customer_id = latest.customer_id
+AND o.order_date = latest.latest_order_date;
+```
+
+### Output
+
+| customer_id | customer_name | order_id | order_date | order_amount |
+|------------:|---------------|---------:|------------|-------------:|
+| 1 | John | 106 | 2025-03-01 | 1000 |
+| 2 | Jane | 105 | 2025-02-15 | 800 |
+| 3 | Mike | 104 | 2025-01-20 | 1500 |
+
+---
+
+## Notes
+
+- `ROW_NUMBER()` is the preferred solution in modern SQL databases because it is flexible and efficient.
+- If multiple orders have the same latest date, `ROW_NUMBER()` returns only one row. Use `RANK()` or `DENSE_RANK()` if you want all tied latest orders.
+- The `JOIN + MAX()` approach is compatible with most SQL databases.
+- This is one of the most common SQL interview questions involving window functions and grouping.
