@@ -1329,3 +1329,799 @@ WHERE oi.product_id IS NULL;
 - `NOT EXISTS` is generally the recommended approach because it handles `NULL` values correctly and performs well.
 - Avoid using `NOT IN` if the subquery may return `NULL` values.
 - This is a frequently asked SQL interview question related to joins and subqueries.
+
+---
+
+# 12. Identify the Most Selling Product
+
+## Scenario
+
+Suppose you have an `order_items` table.
+
+| order_item_id | order_id | product_id | product_name | quantity |
+|--------------:|---------:|-----------:|--------------|---------:|
+| 1 | 1001 | 101 | Laptop | 2 |
+| 2 | 1001 | 102 | Mouse | 5 |
+| 3 | 1002 | 101 | Laptop | 1 |
+| 4 | 1003 | 103 | Keyboard | 3 |
+| 5 | 1004 | 102 | Mouse | 4 |
+| 6 | 1005 | 101 | Laptop | 5 |
+
+We want to identify the **most selling product** based on the total quantity sold.
+
+---
+
+## Method 1: Using `GROUP BY` and `ORDER BY` (Most Common)
+
+```sql
+SELECT
+    product_id,
+    product_name,
+    SUM(quantity) AS total_quantity_sold
+FROM order_items
+GROUP BY
+    product_id,
+    product_name
+ORDER BY total_quantity_sold DESC
+LIMIT 1;
+```
+
+### Output
+
+| product_id | product_name | total_quantity_sold |
+|-----------:|--------------|--------------------:|
+| 101 | Laptop | 8 |
+
+### Explanation
+
+- `SUM(quantity)` calculates the total units sold for each product.
+- `GROUP BY` groups records by product.
+- `ORDER BY ... DESC` sorts products from highest to lowest sales.
+- `LIMIT 1` returns the top-selling product.
+
+---
+
+## Method 2: Using `TOP` (SQL Server)
+
+```sql
+SELECT TOP 1
+    product_id,
+    product_name,
+    SUM(quantity) AS total_quantity_sold
+FROM order_items
+GROUP BY
+    product_id,
+    product_name
+ORDER BY total_quantity_sold DESC;
+```
+
+---
+
+## Method 3: Using `FETCH FIRST` (Oracle 12c+, PostgreSQL)
+
+```sql
+SELECT
+    product_id,
+    product_name,
+    SUM(quantity) AS total_quantity_sold
+FROM order_items
+GROUP BY
+    product_id,
+    product_name
+ORDER BY total_quantity_sold DESC
+FETCH FIRST 1 ROW ONLY;
+```
+
+---
+
+## Method 4: Using `RANK()` (Returns All Tied Top Products)
+
+```sql
+SELECT
+    product_id,
+    product_name,
+    total_quantity_sold
+FROM (
+    SELECT
+        product_id,
+        product_name,
+        SUM(quantity) AS total_quantity_sold,
+        RANK() OVER (
+            ORDER BY SUM(quantity) DESC
+        ) AS sales_rank
+    FROM order_items
+    GROUP BY
+        product_id,
+        product_name
+) AS ranked_products
+WHERE sales_rank = 1;
+```
+
+### Explanation
+
+- `RANK()` assigns the same rank to products with equal sales.
+- If multiple products have the highest quantity sold, all of them are returned.
+
+---
+
+## Method 5: Most Selling Product by Revenue
+
+If "most selling" refers to **highest revenue** instead of quantity:
+
+```sql
+SELECT
+    product_id,
+    product_name,
+    SUM(quantity * price) AS total_revenue
+FROM order_items
+GROUP BY
+    product_id,
+    product_name
+ORDER BY total_revenue DESC
+LIMIT 1;
+```
+
+### Explanation
+
+- Calculates total revenue as `quantity × price`.
+- Identifies the product generating the highest revenue.
+
+---
+
+## Notes
+
+- `SUM(quantity)` identifies the product with the highest number of units sold.
+- `SUM(quantity * price)` identifies the highest revenue-generating product.
+- `RANK()` is useful when multiple products tie for the highest sales.
+- This is one of the most common SQL interview questions on aggregation and ranking.
+
+---
+
+# 13. Get Total Revenue and Number of Orders Per Region
+
+## Scenario
+
+Suppose you have the following `orders` table.
+
+| order_id | customer_id | region | order_amount |
+|---------:|------------:|--------|-------------:|
+| 101 | 1 | North | 1200 |
+| 102 | 2 | South | 800 |
+| 103 | 3 | North | 1500 |
+| 104 | 4 | East | 700 |
+| 105 | 5 | South | 1000 |
+| 106 | 6 | North | 900 |
+
+We want to calculate the **total revenue** and **number of orders** for each region.
+
+---
+
+## Method 1: Using `GROUP BY` (Most Common)
+
+```sql
+SELECT
+    region,
+    SUM(order_amount) AS total_revenue,
+    COUNT(order_id) AS total_orders
+FROM orders
+GROUP BY region;
+```
+
+### Output
+
+| region | total_revenue | total_orders |
+|--------|--------------:|-------------:|
+| East | 700 | 1 |
+| North | 3600 | 3 |
+| South | 1800 | 2 |
+
+### Explanation
+
+- `SUM(order_amount)` calculates the total revenue for each region.
+- `COUNT(order_id)` counts the number of orders.
+- `GROUP BY region` groups the data by region.
+
+---
+
+## Method 2: Sort Regions by Highest Revenue
+
+```sql
+SELECT
+    region,
+    SUM(order_amount) AS total_revenue,
+    COUNT(order_id) AS total_orders
+FROM orders
+GROUP BY region
+ORDER BY total_revenue DESC;
+```
+
+### Explanation
+
+- Displays regions from the highest to the lowest revenue.
+
+---
+
+## Method 3: Display Average Order Value Per Region
+
+```sql
+SELECT
+    region,
+    COUNT(order_id) AS total_orders,
+    SUM(order_amount) AS total_revenue,
+    AVG(order_amount) AS average_order_value
+FROM orders
+GROUP BY region;
+```
+
+### Output
+
+| region | total_orders | total_revenue | average_order_value |
+|--------|-------------:|--------------:|--------------------:|
+| East | 1 | 700 | 700 |
+| North | 3 | 3600 | 1200 |
+| South | 2 | 1800 | 900 |
+
+---
+
+## Method 4: Using Customer and Region Tables
+
+If the region is stored in the `customers` table:
+
+### customers
+
+| customer_id | customer_name | region |
+|------------:|---------------|--------|
+| 1 | John | North |
+| 2 | Jane | South |
+| 3 | Mike | North |
+| 4 | Alice | East |
+
+```sql
+SELECT
+    c.region,
+    COUNT(o.order_id) AS total_orders,
+    SUM(o.order_amount) AS total_revenue
+FROM customers c
+JOIN orders o
+    ON c.customer_id = o.customer_id
+GROUP BY c.region;
+```
+
+### Explanation
+
+- Joins `customers` and `orders`.
+- Groups the results by customer region.
+- Calculates total orders and total revenue for each region.
+
+---
+
+## Notes
+
+- `SUM()` calculates the total revenue.
+- `COUNT()` calculates the number of orders.
+- `AVG()` can be used to determine the average order value per region.
+- `GROUP BY` is required when using aggregate functions.
+- This is a common SQL interview question involving grouping, aggregation, and reporting.
+
+---
+
+# 14. Count Customers with More Than 5 Orders
+
+## Scenario
+
+Suppose you have an `orders` table.
+
+| order_id | customer_id | order_date |
+|---------:|------------:|------------|
+| 101 | 1 | 2025-01-10 |
+| 102 | 1 | 2025-01-15 |
+| 103 | 1 | 2025-01-20 |
+| 104 | 1 | 2025-02-01 |
+| 105 | 1 | 2025-02-10 |
+| 106 | 1 | 2025-02-15 |
+| 107 | 2 | 2025-01-12 |
+| 108 | 2 | 2025-02-05 |
+| 109 | 3 | 2025-01-18 |
+
+We want to count **how many customers have placed more than 5 orders**.
+
+---
+
+## Method 1: Count Customers with More Than 5 Orders (Recommended)
+
+```sql
+SELECT COUNT(*) AS total_customers
+FROM (
+    SELECT customer_id
+    FROM orders
+    GROUP BY customer_id
+    HAVING COUNT(order_id) > 5
+) AS customer_orders;
+```
+
+### Output
+
+| total_customers |
+|----------------:|
+| 1 |
+
+### Explanation
+
+- `GROUP BY customer_id` groups all orders by customer.
+- `HAVING COUNT(order_id) > 5` filters customers with more than five orders.
+- The outer query counts how many such customers exist.
+
+---
+
+## Method 2: Display the Customers Instead of the Count
+
+```sql
+SELECT
+    customer_id,
+    COUNT(order_id) AS total_orders
+FROM orders
+GROUP BY customer_id
+HAVING COUNT(order_id) > 5;
+```
+
+### Output
+
+| customer_id | total_orders |
+|------------:|-------------:|
+| 1 | 6 |
+
+### Explanation
+
+- Returns the customer IDs along with their order count.
+- Useful when you need to know **which** customers satisfy the condition.
+
+---
+
+## Method 3: Display Customer Names
+
+If customer information is stored in a `customers` table:
+
+### customers
+
+| customer_id | customer_name |
+|------------:|---------------|
+| 1 | John |
+| 2 | Jane |
+| 3 | Mike |
+
+```sql
+SELECT
+    c.customer_id,
+    c.customer_name,
+    COUNT(o.order_id) AS total_orders
+FROM customers c
+JOIN orders o
+    ON c.customer_id = o.customer_id
+GROUP BY
+    c.customer_id,
+    c.customer_name
+HAVING COUNT(o.order_id) > 5;
+```
+
+### Output
+
+| customer_id | customer_name | total_orders |
+|------------:|---------------|-------------:|
+| 1 | John | 6 |
+
+---
+
+## Method 4: Sort by Highest Number of Orders
+
+```sql
+SELECT
+    customer_id,
+    COUNT(order_id) AS total_orders
+FROM orders
+GROUP BY customer_id
+HAVING COUNT(order_id) > 5
+ORDER BY total_orders DESC;
+```
+
+### Explanation
+
+- Returns customers with more than five orders.
+- Displays the customers in descending order based on the number of orders.
+
+---
+
+## Notes
+
+- `GROUP BY` groups records by customer.
+- `COUNT()` calculates the number of orders per customer.
+- `HAVING` filters grouped results and is used with aggregate functions like `COUNT()`.
+- This is a common SQL interview question on aggregation and filtering.
+
+---
+
+# 15. Retrieve Customers with Orders Above Average Order Value
+
+## Scenario
+
+Suppose you have the following tables.
+
+### customers
+
+| customer_id | customer_name |
+|------------:|---------------|
+| 1 | John |
+| 2 | Jane |
+| 3 | Mike |
+| 4 | Alice |
+
+### orders
+
+| order_id | customer_id | order_amount |
+|---------:|------------:|-------------:|
+| 101 | 1 | 500 |
+| 102 | 2 | 1500 |
+| 103 | 1 | 800 |
+| 104 | 3 | 1200 |
+| 105 | 4 | 400 |
+| 106 | 2 | 2000 |
+
+We want to retrieve customers whose **order amount is greater than the average order value**.
+
+---
+
+## Method 1: Using a Subquery (Most Common)
+
+```sql
+SELECT
+    customer_id,
+    order_id,
+    order_amount
+FROM orders
+WHERE order_amount > (
+    SELECT AVG(order_amount)
+    FROM orders
+);
+```
+
+### Output
+
+Average Order Value = **1066.67**
+
+| customer_id | order_id | order_amount |
+|------------:|---------:|-------------:|
+| 2 | 102 | 1500 |
+| 3 | 104 | 1200 |
+| 2 | 106 | 2000 |
+
+### Explanation
+
+- The inner query calculates the average order amount.
+- The outer query retrieves orders whose value is greater than the average.
+
+---
+
+## Method 2: Display Customer Names
+
+```sql
+SELECT
+    c.customer_id,
+    c.customer_name,
+    o.order_id,
+    o.order_amount
+FROM customers c
+JOIN orders o
+    ON c.customer_id = o.customer_id
+WHERE o.order_amount > (
+    SELECT AVG(order_amount)
+    FROM orders
+);
+```
+
+### Output
+
+| customer_id | customer_name | order_id | order_amount |
+|------------:|---------------|---------:|-------------:|
+| 2 | Jane | 102 | 1500 |
+| 3 | Mike | 104 | 1200 |
+| 2 | Jane | 106 | 2000 |
+
+---
+
+## Method 3: Retrieve Unique Customers
+
+If a customer has multiple orders above the average, return each customer only once.
+
+```sql
+SELECT DISTINCT
+    c.customer_id,
+    c.customer_name
+FROM customers c
+JOIN orders o
+    ON c.customer_id = o.customer_id
+WHERE o.order_amount > (
+    SELECT AVG(order_amount)
+    FROM orders
+);
+```
+
+### Output
+
+| customer_id | customer_name |
+|------------:|---------------|
+| 2 | Jane |
+| 3 | Mike |
+
+---
+
+## Method 4: Using a Common Table Expression (CTE)
+
+```sql
+WITH average_order AS (
+    SELECT AVG(order_amount) AS avg_order_value
+    FROM orders
+)
+SELECT
+    c.customer_id,
+    c.customer_name,
+    o.order_id,
+    o.order_amount
+FROM customers c
+JOIN orders o
+    ON c.customer_id = o.customer_id
+CROSS JOIN average_order a
+WHERE o.order_amount > a.avg_order_value;
+```
+
+### Explanation
+
+- The CTE calculates the average order value only once.
+- `CROSS JOIN` makes the calculated average available to all rows.
+- This approach improves readability for complex queries.
+
+---
+
+## Notes
+
+- `AVG()` calculates the average order value.
+- A subquery is the simplest and most common approach.
+- Use `DISTINCT` if you only need the list of customers instead of every qualifying order.
+- CTEs improve readability and are useful for complex SQL queries.
+- This is a frequently asked SQL interview question involving aggregate functions and subqueries.
+
+---
+
+# 16. Find All Employees Hired on a Weekend
+
+## Scenario
+
+Suppose you have an `employees` table.
+
+| employee_id | employee_name | department | joining_date |
+|-------------|---------------|------------|--------------|
+| 1 | John | IT | 2023-07-03 (Monday) |
+| 2 | Jane | HR | 2023-07-08 (Saturday) |
+| 3 | Mike | Sales | 2023-07-09 (Sunday) |
+| 4 | Alice | Finance | 2023-07-10 (Monday) |
+| 5 | David | IT | 2023-07-15 (Saturday) |
+
+We want to retrieve **employees who were hired on a Saturday or Sunday**.
+
+---
+
+## Method 1: Using `DAYOFWEEK()` (MySQL)
+
+```sql
+SELECT *
+FROM employees
+WHERE DAYOFWEEK(joining_date) IN (1, 7);
+```
+
+### Output
+
+| employee_id | employee_name | department | joining_date |
+|-------------|---------------|------------|--------------|
+| 2 | Jane | HR | 2023-07-08 |
+| 3 | Mike | Sales | 2023-07-09 |
+| 5 | David | IT | 2023-07-15 |
+
+### Explanation
+
+In MySQL:
+
+| Day | Value |
+|-----|------:|
+| Sunday | 1 |
+| Monday | 2 |
+| Tuesday | 3 |
+| Wednesday | 4 |
+| Thursday | 5 |
+| Friday | 6 |
+| Saturday | 7 |
+
+- `DAYOFWEEK()` returns the day number.
+- `IN (1, 7)` filters Sunday and Saturday.
+
+---
+
+## Method 2: Using `DAYNAME()` (MySQL)
+
+```sql
+SELECT *
+FROM employees
+WHERE DAYNAME(joining_date) IN ('Saturday', 'Sunday');
+```
+
+### Explanation
+
+- `DAYNAME()` returns the day name.
+- Easier to read than using numeric values.
+
+---
+
+## Method 3: PostgreSQL
+
+```sql
+SELECT *
+FROM employees
+WHERE EXTRACT(DOW FROM joining_date) IN (0, 6);
+```
+
+### Explanation
+
+In PostgreSQL:
+
+| Day | Value |
+|-----|------:|
+| Sunday | 0 |
+| Monday | 1 |
+| Tuesday | 2 |
+| Wednesday | 3 |
+| Thursday | 4 |
+| Friday | 5 |
+| Saturday | 6 |
+
+---
+
+## Method 4: SQL Server
+
+```sql
+SELECT *
+FROM employees
+WHERE DATENAME(WEEKDAY, joining_date) IN ('Saturday', 'Sunday');
+```
+
+---
+
+## Method 5: Oracle
+
+```sql
+SELECT *
+FROM employees
+WHERE TO_CHAR(joining_date, 'DAY') IN ('SATURDAY', 'SUNDAY');
+```
+
+> **Note:** Depending on the Oracle session's locale and formatting, you may need to use `TRIM()`:
+>
+> ```sql
+> SELECT *
+> FROM employees
+> WHERE TRIM(TO_CHAR(joining_date, 'DAY')) IN ('SATURDAY', 'SUNDAY');
+> ```
+
+---
+
+## Notes
+
+- **MySQL:** Use `DAYOFWEEK()` or `DAYNAME()`.
+- **PostgreSQL:** Use `EXTRACT(DOW FROM date)`.
+- **SQL Server:** Use `DATENAME(WEEKDAY, date)`.
+- **Oracle:** Use `TO_CHAR(date, 'DAY')`.
+- This is a common SQL interview question for testing knowledge of date functions.
+
+---
+
+# 17. Find All Employees with Salary Between 50,000 and 100,000
+
+## Scenario
+
+Suppose you have an `employees` table.
+
+| employee_id | employee_name | department | salary |
+|-------------|---------------|------------|-------:|
+| 1 | John | IT | 45000 |
+| 2 | Jane | HR | 60000 |
+| 3 | Mike | Sales | 85000 |
+| 4 | Alice | Finance | 100000 |
+| 5 | David | IT | 120000 |
+
+We want to retrieve **employees whose salary is between 50,000 and 100,000 (inclusive)**.
+
+---
+
+## Method 1: Using `BETWEEN` (Most Common)
+
+```sql
+SELECT *
+FROM employees
+WHERE salary BETWEEN 50000 AND 100000;
+```
+
+### Output
+
+| employee_id | employee_name | department | salary |
+|-------------|---------------|------------|-------:|
+| 2 | Jane | HR | 60000 |
+| 3 | Mike | Sales | 85000 |
+| 4 | Alice | Finance | 100000 |
+
+### Explanation
+
+- `BETWEEN` returns values within the specified range.
+- It is **inclusive**, meaning both `50000` and `100000` are included.
+
+---
+
+## Method 2: Using Comparison Operators
+
+```sql
+SELECT *
+FROM employees
+WHERE salary >= 50000
+  AND salary <= 100000;
+```
+
+### Explanation
+
+- `>= 50000` selects salaries greater than or equal to 50,000.
+- `<= 100000` selects salaries less than or equal to 100,000.
+- This produces the same result as `BETWEEN`.
+
+---
+
+## Method 3: Exclude Boundary Values
+
+If you want employees whose salary is **strictly between** 50,000 and 100,000:
+
+```sql
+SELECT *
+FROM employees
+WHERE salary > 50000
+  AND salary < 100000;
+```
+
+### Output
+
+| employee_id | employee_name | department | salary |
+|-------------|---------------|------------|-------:|
+| 2 | Jane | HR | 60000 |
+| 3 | Mike | Sales | 85000 |
+
+---
+
+## Method 4: Display Employee Name and Salary Only
+
+```sql
+SELECT
+    employee_name,
+    salary
+FROM employees
+WHERE salary BETWEEN 50000 AND 100000
+ORDER BY salary DESC;
+```
+
+### Output
+
+| employee_name | salary |
+|---------------|-------:|
+| Alice | 100000 |
+| Mike | 85000 |
+| Jane | 60000 |
+
+---
+
+## Notes
+
+- `BETWEEN` includes both the lower and upper limits.
+- Use comparison operators (`>=` and `<=`) if you prefer explicit conditions.
+- `ORDER BY salary DESC` displays employees from the highest to the lowest salary.
+- This is a common SQL interview question for testing filtering with numeric ranges.
