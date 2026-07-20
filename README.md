@@ -933,3 +933,134 @@ WHERE YEAR(joining_date) = 2023;
 - `EXTRACT(YEAR FROM date)` is commonly used in **PostgreSQL** and **Oracle**.
 - Using a **date range** (`>=` and `<`) is the recommended approach for better performance on indexed date columns.
 - This is a common SQL interview question for testing date filtering.
+
+---
+
+# 9. Calculate Average Order Value Per Customer
+
+## Scenario
+
+Suppose you have an `orders` table.
+
+| order_id | customer_id | order_amount |
+|---------:|------------:|-------------:|
+| 101 | 1 | 500 |
+| 102 | 2 | 1200 |
+| 103 | 1 | 700 |
+| 104 | 3 | 1500 |
+| 105 | 2 | 800 |
+| 106 | 1 | 1000 |
+
+We want to calculate the **average order value (AOV)** for each customer.
+
+> **Average Order Value (AOV) = Total Order Amount / Number of Orders**
+
+---
+
+## Method 1: Using `AVG()` (Most Common)
+
+```sql
+SELECT
+    customer_id,
+    AVG(order_amount) AS average_order_value
+FROM orders
+GROUP BY customer_id;
+```
+
+### Output
+
+| customer_id | average_order_value |
+|------------:|--------------------:|
+| 1 | 733.33 |
+| 2 | 1000.00 |
+| 3 | 1500.00 |
+
+### Explanation
+
+- `AVG(order_amount)` calculates the average value of all orders placed by each customer.
+- `GROUP BY customer_id` groups orders by customer.
+
+---
+
+## Method 2: Using `SUM()` and `COUNT()`
+
+```sql
+SELECT
+    customer_id,
+    SUM(order_amount) AS total_order_amount,
+    COUNT(*) AS total_orders,
+    SUM(order_amount) / COUNT(*) AS average_order_value
+FROM orders
+GROUP BY customer_id;
+```
+
+### Output
+
+| customer_id | total_order_amount | total_orders | average_order_value |
+|------------:|-------------------:|-------------:|--------------------:|
+| 1 | 2200 | 3 | 733.33 |
+| 2 | 2000 | 2 | 1000.00 |
+| 3 | 1500 | 1 | 1500.00 |
+
+### Explanation
+
+- `SUM(order_amount)` calculates the total amount spent by each customer.
+- `COUNT(*)` counts the number of orders.
+- Dividing the total amount by the number of orders gives the average order value.
+
+---
+
+## Method 3: Display Customer Name Along with Average Order Value
+
+```sql
+SELECT
+    c.customer_id,
+    c.customer_name,
+    AVG(o.order_amount) AS average_order_value
+FROM customers c
+JOIN orders o
+    ON c.customer_id = o.customer_id
+GROUP BY
+    c.customer_id,
+    c.customer_name;
+```
+
+### Output
+
+| customer_id | customer_name | average_order_value |
+|------------:|---------------|--------------------:|
+| 1 | John | 733.33 |
+| 2 | Jane | 1000.00 |
+| 3 | Mike | 1500.00 |
+
+---
+
+## Method 4: Include Customers with No Orders
+
+```sql
+SELECT
+    c.customer_id,
+    c.customer_name,
+    COALESCE(AVG(o.order_amount), 0) AS average_order_value
+FROM customers c
+LEFT JOIN orders o
+    ON c.customer_id = o.customer_id
+GROUP BY
+    c.customer_id,
+    c.customer_name;
+```
+
+### Explanation
+
+- `LEFT JOIN` returns all customers, including those with no orders.
+- `AVG()` returns `NULL` for customers without orders.
+- `COALESCE(..., 0)` replaces `NULL` with `0`.
+
+---
+
+## Notes
+
+- `AVG()` automatically ignores `NULL` values.
+- `GROUP BY` is required to calculate the average for each customer.
+- `COALESCE()` is useful for handling customers who have not placed any orders.
+- Average Order Value (AOV) is a key e-commerce KPI used to measure customer purchasing behavior.
