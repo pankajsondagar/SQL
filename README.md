@@ -685,3 +685,148 @@ WHERE c.customer_id NOT IN (
 - `LEFT JOIN ... IS NULL` is another common and readable approach.
 - Avoid `NOT IN` if the subquery may return `NULL` values, as it can produce unexpected results.
 - Ensure the customer has at least one purchase before checking for returns.
+
+---
+
+# 7. Show the Count of Orders Per Customer
+
+## Scenario
+
+Suppose you have the following tables.
+
+### customers
+
+| customer_id | customer_name |
+|------------:|---------------|
+| 1 | John |
+| 2 | Jane |
+| 3 | Mike |
+| 4 | Alice |
+
+### orders
+
+| order_id | customer_id | order_date |
+|---------:|------------:|------------|
+| 101 | 1 | 2025-01-10 |
+| 102 | 2 | 2025-01-12 |
+| 103 | 1 | 2025-01-18 |
+| 104 | 3 | 2025-01-22 |
+| 105 | 1 | 2025-02-05 |
+| 106 | 2 | 2025-02-10 |
+
+We want to calculate the **number of orders placed by each customer**.
+
+---
+
+## Method 1: Using `GROUP BY` (Most Common)
+
+```sql
+SELECT
+    customer_id,
+    COUNT(*) AS total_orders
+FROM orders
+GROUP BY customer_id;
+```
+
+### Output
+
+| customer_id | total_orders |
+|------------:|-------------:|
+| 1 | 3 |
+| 2 | 2 |
+| 3 | 1 |
+
+### Explanation
+
+- `COUNT(*)` counts the number of orders.
+- `GROUP BY customer_id` groups all orders for each customer.
+- Customers with no orders are not included.
+
+---
+
+## Method 2: Display Customer Name with Order Count
+
+```sql
+SELECT
+    c.customer_id,
+    c.customer_name,
+    COUNT(o.order_id) AS total_orders
+FROM customers c
+INNER JOIN orders o
+    ON c.customer_id = o.customer_id
+GROUP BY
+    c.customer_id,
+    c.customer_name;
+```
+
+### Output
+
+| customer_id | customer_name | total_orders |
+|------------:|---------------|-------------:|
+| 1 | John | 3 |
+| 2 | Jane | 2 |
+| 3 | Mike | 1 |
+
+### Explanation
+
+- Joins the `customers` and `orders` tables.
+- Groups the data by customer.
+- Displays both the customer name and the total number of orders.
+
+---
+
+## Method 3: Include Customers with Zero Orders
+
+```sql
+SELECT
+    c.customer_id,
+    c.customer_name,
+    COUNT(o.order_id) AS total_orders
+FROM customers c
+LEFT JOIN orders o
+    ON c.customer_id = o.customer_id
+GROUP BY
+    c.customer_id,
+    c.customer_name
+ORDER BY total_orders DESC;
+```
+
+### Output
+
+| customer_id | customer_name | total_orders |
+|------------:|---------------|-------------:|
+| 1 | John | 3 |
+| 2 | Jane | 2 |
+| 3 | Mike | 1 |
+| 4 | Alice | 0 |
+
+### Explanation
+
+- `LEFT JOIN` returns all customers.
+- `COUNT(o.order_id)` counts only matching orders.
+- Customers with no orders appear with a count of `0`.
+
+---
+
+## Method 4: Count Orders Placed in the Current Year
+
+```sql
+SELECT
+    customer_id,
+    COUNT(*) AS total_orders
+FROM orders
+WHERE YEAR(order_date) = YEAR(CURDATE())
+GROUP BY customer_id;
+```
+
+> **Note:** The above query is for **MySQL**.
+
+---
+
+## Notes
+
+- `COUNT(*)` counts all rows in each group.
+- `COUNT(column_name)` counts only non-`NULL` values.
+- Use `LEFT JOIN` if customers with no orders should also be included.
+- `GROUP BY` is required when using aggregate functions like `COUNT()`.
+- This is one of the most frequently asked SQL aggregation interview questions.
